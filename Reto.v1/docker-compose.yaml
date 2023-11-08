@@ -1,0 +1,70 @@
+version: '3.5'
+
+services:
+  db:
+    image: mysql
+    ports: 
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: dbname
+      MYSQL_PASSWORD: test
+      MYSQL_ROOT_PASSWORD: test
+    volumes:
+      - ./dump:/docker-entrypoint-initdb.d
+      - ./conf:/etc/mysql/conf.d
+      - persistent:/var/lib/mysql
+    networks:
+      - default
+
+  www:
+    build: .
+    ports: 
+      - "80:80"
+    volumes:
+      - ./www:/var/www/html
+    links:
+      - db
+    networks:
+      - default
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    links: 
+      - db:db
+    ports:
+      - 8000:80
+    environment:
+      MYSQL_USER: root
+      MYSQL_PASSWORD: test
+      MYSQL_ROOT_PASSWORD: test 
+
+  fingerprint_engine:
+    image: dahirmuhammaddahir/grpc_fingerprint_engine
+    ports:
+      - 4134:4134
+    restart: unless-stopped
+    container_name: RETO2_Huella_Engine
+    networks:
+      - fingerprint_engine_net
+  
+  fingerprint_client:
+    image: r3y3s_fingerprint
+    build: .
+    ports:
+      - 5555:80
+    restart: unless-stopped
+    container_name: RETO2_Cliente_Huella
+    depends_on:
+      - fingerprint_engine
+    networks:
+      - fingerprint_engine_net
+      - fingerprint_client_net
+
+networks:
+  default:
+  fingerprint_engine_net:
+  fingerprint_client_net:
+
+volumes:
+  persistent:
